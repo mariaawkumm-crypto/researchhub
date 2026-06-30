@@ -1,0 +1,268 @@
+body{
+    background:#f8fafc;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Navbar */
+.navbar{
+    background: linear-gradient(135deg,#064E3B,#0F766E) !important;
+}
+
+.navbar-brand{
+    font-size:1.8rem;
+}
+
+/* Hero Section */
+.hero-dashboard{
+    background: linear-gradient(135deg,#064E3B,#0F766E,#14B8A6);
+    color:white;
+    padding:120px 0;
+}
+
+.hero-dashboard h1{
+    font-size:4rem;
+    font-weight:800;
+}
+
+.hero-dashboard p{
+    font-size:1.3rem;
+}
+
+.search-box{
+    max-width:700px;
+    margin:auto;
+    border-radius:50px;
+    overflow:hidden;
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
+}
+
+.search-box input{
+    border:none;
+    padding:16px;
+    font-size:17px;
+}
+
+.search-box input:focus{
+    box-shadow:none;
+}
+
+.search-box button{
+    padding:0 30px;
+}
+
+/* Dashboard Cards */
+.dashboard-card{
+    border:none;
+    border-radius:25px;
+    box-shadow:0 8px 25px rgba(0,0,0,.08);
+    transition:.3s;
+}
+
+.dashboard-card:hover{
+    transform:translateY(-10px);
+}
+
+.dashboard-card h2{
+    color:#0F766E;
+    font-weight:800;
+    font-size:3rem;
+}
+
+/* Department Cards */
+.dept-card{
+    border:none;
+    border-radius:20px;
+    box-shadow:0 8px 20px rgba(0,0,0,.08);
+    transition:.3s;
+    height:100%;
+}
+
+.dept-card:hover{
+    transform:translateY(-10px);
+}
+
+.dept-card h5{
+    color:#0F766E;
+    font-weight:700;
+}
+
+/* Latest Research */
+.list-group{
+    border-radius:20px;
+    overflow:hidden;
+}
+
+.list-group-item{
+    padding:20px;
+    font-size:1.1rem;
+}
+
+.list-group-item:hover{
+    background:#ecfdf5;
+    cursor:pointer;
+}
+
+/* Footer */
+footer{
+    background:#111827 !important;
+    padding:25px !important;
+    font-size:18px;
+}
+
+
+/* Navbar Link Underline Effect */
+
+.nav-link{
+    position: relative;
+}
+
+.nav-link::after{
+    content:'';
+    position:absolute;
+    left:0;
+    bottom:0;
+    width:0;
+    height:2px;
+    background:white;
+    transition:.3s;
+}
+
+.nav-link:hover::after{
+    width:100%;
+}
+
+
+/* Dashboard Cards Hover */
+
+.dashboard-card:hover{
+    transform:translateY(-10px);
+    box-shadow:0 20px 35px rgba(0,0,0,.15);
+}
+
+
+/* Department Cards Hover */
+
+.dept-card:hover{
+    transform:translateY(-10px) scale(1.03);
+    box-shadow:0 20px 35px rgba(0,0,0,.15);
+}
+
+
+/* Quick Action Cards Hover */
+
+.card.shadow:hover{
+    transform:translateY(-10px);
+    box-shadow:0 20px 40px rgba(0,0,0,.15) !important;
+}
+
+
+/* Hero Buttons Hover */
+
+.btn-warning:hover{
+    transform:translateY(-3px);
+}
+
+.btn-light:hover{
+    transform:translateY(-3px);
+}
+
+
+/* Search Box Focus */
+
+.search-box:focus{
+    box-shadow:0 0 25px rgba(255,255,255,.5);
+}
+
+/* HERO IMAGE */
+
+.hero-image{
+
+    width:100%;
+    max-width:650px;
+
+    animation: float 4s ease-in-out infinite;
+
+}
+
+@keyframes float{
+
+0%{
+
+transform:translateY(0px);
+
+}
+
+50%{
+
+transform:translateY(-15px);
+
+}
+
+100%{
+
+transform:translateY(0px);
+
+}
+
+}
+
+
+/* HERO SECTION */
+
+.hero-dashboard{
+
+padding:90px 0;
+
+}
+
+
+/* Buttons */
+
+.hero-dashboard .btn{
+
+padding:14px 30px;
+
+border-radius:10px;
+
+font-weight:600;
+
+}
+
+
+/* Mobile */
+
+@media(max-width:992px){
+
+.hero-dashboard{
+
+text-align:center;
+
+}
+
+.hero-image{
+
+margin-top:40px;
+
+}
+
+}
+
+/* Dashboard Research Cards */
+
+.card{
+    border-radius:20px;
+}
+
+.card:hover{
+    transform:translateY(-6px);
+    transition:.3s;
+}
+
+.btn{
+    border-radius:10px;
+}
+
+.container{
+    padding-top:20px;
+    padding-bottom:20px;
+}
