@@ -21,9 +21,6 @@
 
     <%- include("partials/navbar") %>
 
-    <!-- ========================= -->
-    <!-- HERO SECTION -->
-    <!-- ========================= -->
 
     <!-- ========================= -->
 <!-- HERO SECTION -->
@@ -125,7 +122,7 @@
         <div class="col-md-3">
           <div class="card dashboard-card text-center">
             <div class="card-body">
-              <h2>12</h2>
+              <h2><%= totalDepartments %></h2>
 
               <p>Total Departments</p>
             </div>
@@ -135,7 +132,7 @@
         <div class="col-md-3">
           <div class="card dashboard-card text-center">
             <div class="card-body">
-              <h2>58</h2>
+              <h2><%= totalResearch %></h2>
 
               <p>Total Research</p>
             </div>
@@ -145,7 +142,7 @@
         <div class="col-md-3">
           <div class="card dashboard-card text-center">
             <div class="card-body">
-              <h2>40</h2>
+              <h2><%= totalBS %></h2>
 
               <p>BS Research</p>
             </div>
@@ -155,7 +152,7 @@
         <div class="col-md-3">
           <div class="card dashboard-card text-center">
             <div class="card-body">
-              <h2>18</h2>
+              <h2><%= totalMS %></h2>
 
               <p>MS / PhD Research</p>
             </div>
@@ -165,86 +162,63 @@
     </div>
 
     <!-- ========================= -->
-    <!-- DEPARTMENTS -->
-    <!-- ========================= -->
+<!-- DEPARTMENTS OVERVIEW -->
+<!-- ========================= -->
 
-    <div class="container mt-5">
-      <h2 class="text-center fw-bold mb-4">Departments Overview</h2>
+<div class="container mt-5">
 
-      <div class="row g-4">
-        <div class="col-md-3">
-          <div class="card dept-card">
-            <div class="card-body">
-              <h5>💻 Computer Science</h5>
-              <p>12 Research Papers</p>
+    <h2 class="text-center fw-bold mb-4">
+        📚 Departments Overview
+    </h2>
+
+    <div class="row g-4">
+
+        <% if(departmentStats.length === 0){ %>
+
+            <div class="col-12">
+
+                <div class="alert alert-info text-center">
+
+                    No Research Available
+
+                </div>
+
             </div>
-          </div>
-        </div>
 
-        <div class="col-md-3">
-          <div class="card dept-card">
-            <div class="card-body">
-              <h5>⚙ Software Engineering</h5>
-              <p>8 Research Papers</p>
-            </div>
-          </div>
-        </div>
+        <% } %>
 
-        <div class="col-md-3">
-          <div class="card dept-card">
-            <div class="card-body">
-              <h5>🖥 Information Technology</h5>
-              <p>7 Research Papers</p>
-            </div>
-          </div>
-        </div>
+        <% departmentStats.forEach(function(dept){ %>
 
-        <div class="col-md-3">
-          <div class="card dept-card">
-            <div class="card-body">
-              <h5>📊 Management Sciences</h5>
-              <p>10 Research Papers</p>
-            </div>
-          </div>
-        </div>
+            <div class="col-md-3">
 
-        <div class="col-md-3">
-          <div class="card dept-card">
-            <div class="card-body">
-              <h5>📚 Education</h5>
-              <p>5 Research Papers</p>
-            </div>
-          </div>
-        </div>
+                <div class="card dept-card shadow border-0 h-100">
 
-        <div class="col-md-3">
-          <div class="card dept-card">
-            <div class="card-body">
-              <h5>📖 English</h5>
-              <p>4 Research Papers</p>
-            </div>
-          </div>
-        </div>
+                    <div class="card-body text-center">
 
-        <div class="col-md-3">
-          <div class="card dept-card">
-            <div class="card-body">
-              <h5>➗ Mathematics</h5>
-              <p>3 Research Papers</p>
-            </div>
-          </div>
-        </div>
+                        <h5 class="fw-bold">
 
-        <div class="col-md-3">
-          <div class="card dept-card">
-            <div class="card-body">
-              <h5>⚛ Physics</h5>
-              <p>6 Research Papers</p>
+                            🎓 <%= dept._id %>
+
+                        </h5>
+
+                        <p class="text-muted mb-0">
+
+                            <strong><%= dept.totalResearch %></strong>
+                            Research Papers
+
+                        </p>
+
+                    </div>
+
+                </div>
+
             </div>
-          </div>
-        </div>
-      </div>
+
+        <% }) %>
+
     </div>
+
+</div>
 
     <!-- ========================= -->
     <!-- WHY USE RESEARCHHUB -->

@@ -1,344 +1,374 @@
-// ==========================================
-// IMPORTS
-// ==========================================
+// IMPORT REQUIRED PACKAGES
+
+require("dotenv").config();
 
 const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
 const multer = require("multer");
+const path = require("path");
 
 const User = require("./models/User");
 const Research = require("./models/Research");
 
 const app = express();
 
-
 // ==========================================
+
 // APP SETTINGS
-// ==========================================
 
+// Set EJS as Template Engine
 app.set("view engine", "ejs");
 
-app.use(express.static("public"));
+// Serve Static Files
+app.use(express.static(path.join(__dirname, "public")));
+
+// Parse Form Data
 app.use(express.urlencoded({ extended: true }));
 
+// Parse JSON Data
+app.use(express.json());
 
 // ==========================================
+
 // SESSION CONFIGURATION
-// ==========================================
 
 app.use(
-    session({
-        secret: "researchhubsecret",
-        resave: false,
-        saveUninitialized: false
-    })
+  session({
+    secret: process.env.SESSION_SECRET,
+
+    resave: false,
+
+    saveUninitialized: false,
+
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24, // 1 Day
+    },
+  }),
 );
 
-
-// ==========================================
-// GLOBAL USER
-// Available in every EJS page
 // ==========================================
 
-app.use((req, res, next) => {
+// GLOBAL USER MIDDLEWARE
+// Makes Logged-in User Available in All Views
 
-    res.locals.user = req.session.userName || null;
+app.use(async (req, res, next) => {
+  try {
+    if (req.session.userId) {
+      const user = await User.findById(req.session.userId);
 
-    next();
-
-});
-
-
-// ==========================================
-// FILE UPLOAD (Multer)
-// ==========================================
-
-const storage = multer.diskStorage({
-
-    destination: function (req, file, cb) {
-
-        cb(null, "public/uploads");
-
-    },
-
-    filename: function (req, file, cb) {
-
-        cb(null, Date.now() + "-" + file.originalname);
-
+      res.locals.user = user;
+    } else {
+      res.locals.user = null;
     }
 
+    next();
+  } catch (error) {
+    console.log(error);
+
+    res.locals.user = null;
+
+    next();
+  }
 });
+
+// ==========================================
+
+// MULTER CONFIGURATION
+// Upload PDF Files Only
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "public/uploads");
+  },
+
+  filename: function (req, file, cb) {
+    const uniqueName = Date.now() + "-" + file.originalname;
+
+    cb(null, uniqueName);
+  },
+});
+
+// Allow Only PDF Files
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype === "application/pdf") {
+    cb(null, true);
+  } else {
+    cb(new Error("Only PDF files are allowed."), false);
+  }
+};
 
 const upload = multer({
+  storage,
 
-    storage: storage
+  fileFilter,
 
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10 MB
+  },
 });
 
-
 // ==========================================
-// DATABASE CONNECTION
+// CONNECT TO MONGODB ATLAS
 // ==========================================
 
-mongoose.connect("mongodb://127.0.0.1:27017/researchhub")
+mongoose
+  .connect(process.env.MONGODB_URI)
 
-.then(() => {
+  .then(() => {
+    console.log("✅ MongoDB Atlas Connected Successfully");
+  })
 
-    console.log("MongoDB Connected");
+  .catch((error) => {
+    console.log("❌ MongoDB Connection Failed");
 
-})
-
-.catch((err) => {
-
-    console.log(err);
-
-});
-
+    console.log(error);
+  });
 
 // ==========================================
 // LOGIN CHECK MIDDLEWARE
 // ==========================================
 
 function isLoggedIn(req, res, next) {
-
-    if (req.session.userId) {
-
-        next();
-
-    } else {
-
-        res.redirect("/login");
-
-    }
-
+  if (req.session.userId) {
+    next();
+  } else {
+    res.redirect("/login");
+  }
 }
 
 function isAdmin(req, res, next) {
+  if (!req.session.userId) {
+    return res.redirect("/login");
+  }
 
-    if (!req.session.userId) {
+  User.findById(req.session.userId)
 
-        return res.redirect("/login");
+    .then((user) => {
+      if (!user || user.role !== "admin") {
+        return res.send("Access Denied");
+      }
 
-    }
-
-    User.findById(req.session.userId)
-
-    .then(user => {
-
-        if (!user || user.role !== "admin") {
-
-            return res.send("Access Denied");
-
-        }
-
-        next();
-
+      next();
     })
 
-    .catch(err => {
+    .catch((err) => {
+      console.log(err);
 
-        console.log(err);
-
-        res.send("Something went wrong");
-
+      res.send("Something went wrong");
     });
-
 }
 
 // ==========================================
 // HOME PAGE
 // ==========================================
 
-app.get("/", (req, res) => {
+app.get("/", async (req, res) => {
+  try {
+    // Total Research
 
-    res.render("index");
+    const totalResearch = await Research.countDocuments();
 
+    // Total Departments
+
+    const departments = await Research.distinct("department");
+
+    const totalDepartments = departments.length;
+
+    // BS Research
+
+    const totalBS = await Research.countDocuments({
+      degreeLevel: "BS",
+    });
+
+    // MS Research
+
+    const totalMS = await Research.countDocuments({
+      degreeLevel: { $in: ["MS", "MS/MPhil", "MPhil"] },
+    });
+
+    // Latest Research
+
+    const latestResearch = await Research.find()
+
+      .sort({ createdAt: -1 })
+
+      .limit(6);
+
+    // ==========================================
+    // DEPARTMENTS OVERVIEW
+    // Count Research Papers Department Wise
+    // ==========================================
+
+    const departmentStats = await Research.aggregate([
+      {
+        $group: {
+          _id: "$department",
+
+          totalResearch: { $sum: 1 },
+        },
+      },
+
+      {
+        $sort: {
+          totalResearch: -1,
+        },
+      },
+    ]);
+
+    res.render("index", {
+      totalResearch,
+
+      totalDepartments,
+
+      totalBS,
+
+      totalMS,
+
+      latestResearch,
+
+      departmentStats,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.send("Unable to Load Home Page");
+  }
 });
-
 
 // ==========================================
 // REGISTER PAGE
 // ==========================================
 
 app.get("/register", (req, res) => {
-
-    res.render("register");
-
+  res.render("register");
 });
-
 
 // ==========================================
 // REGISTER USER
 // ==========================================
 
 app.post("/register", async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
-    try {
+    const user = new User({
+      fullName: req.body.fullName,
+      regNo: req.body.regNo,
+      email: req.body.email,
+      department: req.body.department,
+      degreeLevel: req.body.degreeLevel,
+      password: hashedPassword,
+    });
 
-        const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    await user.save();
 
-        const user = new User({
+    res.redirect("/login");
+  } catch (error) {
+    console.log(error);
 
-            fullName: req.body.fullName,
-            regNo: req.body.regNo,
-            email: req.body.email,
-            department: req.body.department,
-            degreeLevel: req.body.degreeLevel,
-            password: hashedPassword
-
-        });
-
-        await user.save();
-
-        res.redirect("/login");
-
-    }
-
-    catch (error) {
-
-        console.log(error);
-
-        res.send("Registration Failed");
-
-    }
-
+    res.send("Registration Failed");
+  }
 });
-
 
 // ==========================================
 // LOGIN PAGE
 // ==========================================
 
 app.get("/login", (req, res) => {
-
-    res.render("login");
-
+  res.render("login");
 });
-
 
 // ==========================================
 // LOGIN USER
 // ==========================================
 
 app.post("/login", async (req, res) => {
+  try {
+    const user = await User.findOne({
+      email: req.body.email,
+    });
 
-    try {
-
-        const user = await User.findOne({
-            email: req.body.email
-        });
-
-        if (!user) {
-            return res.send("Invalid Email or Password");
-        }
-
-        const isMatch = await bcrypt.compare(
-            req.body.password,
-            user.password
-        );
-
-        if (!isMatch) {
-            return res.send("Invalid Email or Password");
-        }
-
-        // SESSION
-        req.session.userId = user._id;
-        req.session.userName = user.fullName;
-        req.session.userRole = user.role;
-
-        // 🔥 ROLE BASED REDIRECT (MAIN FIX)
-        if (user.role === "admin") {
-            return res.redirect("/admin");
-        } else {
-            return res.redirect("/dashboard");
-        }
-
+    if (!user) {
+      return res.send("Invalid Email or Password");
     }
 
-    catch (error) {
-        console.log(error);
-        res.send("Login Failed");
+    const isMatch = await bcrypt.compare(req.body.password, user.password);
+
+    if (!isMatch) {
+      return res.send("Invalid Email or Password");
     }
 
+    // ==========================================
+
+    // SAVE USER SESSION
+
+    req.session.userId = user._id;
+
+    // 🔥 ROLE BASED REDIRECT (MAIN FIX)
+    if (user.role === "admin") {
+      return res.redirect("/admin");
+    } else {
+      return res.redirect("/dashboard");
+    }
+  } catch (error) {
+    console.log(error);
+    res.send("Login Failed");
+  }
 });
-
 
 // ==========================================
 // DASHBOARD
 // ==========================================
 
 app.get("/dashboard", isLoggedIn, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
 
-    try {
+    const researches = await Research.find({
+      userId: req.session.userId,
+    });
 
-        const user = await User.findById(req.session.userId);
+    res.render("dashboard", {
+      user,
+      researches,
+    });
+  } catch (error) {
+    console.log(error);
 
-        const researches = await Research.find({
-
-            userId: req.session.userId
-
-        });
-
-        res.render("dashboard", {
-
-            user,
-            researches
-
-        });
-
-    }
-
-    catch(error){
-
-        console.log(error);
-
-        res.send("Dashboard Error");
-
-    }
-
+    res.send("Dashboard Error");
+  }
 });
 
 // ==========================================
 // ADMIN
 // ==========================================
 
-
 app.get("/admin", isAdmin, async (req, res) => {
+  const users = await User.find();
 
-    const users = await User.find();
+  const researches = await Research.find();
 
-    const researches = await Research.find();
-
-    res.render("admin", {
-
-        users,
-        researches
-
-    });
-
+  res.render("admin", {
+    users,
+    researches,
+  });
 });
-
 
 // ==========================================
 // LOGOUT
 // ==========================================
 
 app.get("/logout", (req, res) => {
+  req.session.destroy((error) => {
+    if (error) {
+      return res.send("Logout Failed");
+    }
 
-    req.session.destroy((error) => {
-
-        if (error) {
-
-            return res.send("Logout Failed");
-
-        }
-
-        res.redirect("/");
-
-    });
-
+    res.redirect("/");
+  });
 });
 
 // ==========================================
@@ -346,114 +376,99 @@ app.get("/logout", (req, res) => {
 // ==========================================
 
 app.get("/upload-research", isLoggedIn, (req, res) => {
-
-    res.render("uploadResearch");
-
+  res.render("uploadResearch");
 });
-
 
 // ==========================================
 // SAVE RESEARCH
 // ==========================================
 
 app.post(
-    "/upload-research",
-    isLoggedIn,
-    upload.single("pdf"),
-    async (req, res) => {
+  "/upload-research",
+  isLoggedIn,
+  upload.single("pdf"),
+  async (req, res) => {
+    try {
+      console.log("Session User ID:", req.session.userId);
+      console.log("Session Data:", req.session);
 
-        try {
+      // Check if PDF is uploaded
 
-            console.log("Session User ID:", req.session.userId);
-            console.log("Session Data:", req.session);
+      if (!req.file) {
+        return res.send("Please upload a valid PDF file.");
+      }
 
-            const research = new Research({
+      console.log("Uploaded File:", req.file);
 
-                userId: req.session.userId,
+      const research = new Research({
+        userId: req.session.userId,
 
-                title: req.body.title,
-                studentName: req.body.studentName,
-                department: req.body.department,
-                degreeLevel: req.body.degreeLevel,
-                year: req.body.year,
-                supervisor: req.body.supervisor,
-                abstract: req.body.abstract,
-                researchGap: req.body.researchGap,
-                pdfFile: req.file.filename
+        title: req.body.title,
+        studentName: req.body.studentName,
+        department: req.body.department,
+        degreeLevel: req.body.degreeLevel,
+        year: req.body.year,
+        supervisor: req.body.supervisor,
+        abstract: req.body.abstract,
+        researchGap: req.body.researchGap,
+        pdfFile: req.file.filename,
+      });
 
-            });
+      await research.save();
 
-            await research.save();
+      res.redirect("/researches");
+    } catch (error) {
+      console.log(error);
 
-            res.redirect("/researches");
-
-        } catch (error) {
-
-            console.log(error);
-
-            res.send("Upload Failed");
-
-        }
-
+      res.send("Upload Failed");
     }
+  },
 );
-
 
 // ==========================================
 // REPOSITORY PAGE + SEARCH
 // ==========================================
 
 app.get("/researches", async (req, res) => {
+  try {
+    const search = req.query.search || "";
 
-    try {
+    let researches;
 
-        const search = req.query.search || "";
+    if (search) {
+      researches = await Research.find({
+        $or: [
+          { title: { $regex: search, $options: "i" } },
 
-        let researches;
+          { studentName: { $regex: search, $options: "i" } },
 
-        if (search) {
+          { department: { $regex: search, $options: "i" } },
 
-            researches = await Research.find({
-
-                $or: [
-
-                    { title: { $regex: search, $options: "i" } },
-
-                    { studentName: { $regex: search, $options: "i" } },
-
-                    { department: { $regex: search, $options: "i" } },
-
-                    { supervisor: { $regex: search, $options: "i" } }
-
-                ]
-
-            });
-
-        } else {
-
-            researches = await Research.find().sort({ _id: -1 });
-
-        }
-
-        res.render("researches", {
-
-            researches,
-            search
-
-        });
-
-    } catch (error) {
-
-        console.log(error);
-
-        res.send("Unable to Load Repository");
-
+          { supervisor: { $regex: search, $options: "i" } },
+        ],
+      });
+    } else {
+      researches = await Research.find().sort({ _id: -1 });
     }
 
+    res.render("researches", {
+      researches,
+      search,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.send("Unable to Load Repository");
+  }
 });
 
 // ==========================================
 // EDIT PAGE
+// ==========================================
+
+// ==========================================
+// EDIT RESEARCH PAGE
+// Only Owner or Admin Can Edit
 // ==========================================
 
 app.get("/edit-research/:id", isLoggedIn, async (req, res) => {
@@ -461,6 +476,22 @@ app.get("/edit-research/:id", isLoggedIn, async (req, res) => {
     try {
 
         const research = await Research.findById(req.params.id);
+
+        if (!research) {
+
+            return res.send("Research Not Found");
+
+        }
+
+        // Only Owner or Admin Can Edit
+        if (
+            research.userId.toString() !== req.session.userId &&
+            req.session.userRole !== "admin"
+        ) {
+
+            return res.send("Access Denied");
+
+        }
 
         res.render("editResearch", {
 
@@ -470,7 +501,7 @@ app.get("/edit-research/:id", isLoggedIn, async (req, res) => {
 
     }
 
-    catch(error){
+    catch (error) {
 
         console.log(error);
 
@@ -485,41 +516,52 @@ app.get("/edit-research/:id", isLoggedIn, async (req, res) => {
 // ==========================
 
 app.post("/edit-research/:id", isLoggedIn, async (req, res) => {
+  try {
+    await Research.findByIdAndUpdate(req.params.id, {
+      title: req.body.title,
+      studentName: req.body.studentName,
+      department: req.body.department,
+      degreeLevel: req.body.degreeLevel,
+      year: req.body.year,
+      supervisor: req.body.supervisor,
+      abstract: req.body.abstract,
+      researchGap: req.body.researchGap,
+    });
 
-    try {
+    res.redirect("/researches");
+  } catch (error) {
+    console.log(error);
 
-        await Research.findByIdAndUpdate(req.params.id, {
-
-            title: req.body.title,
-            studentName: req.body.studentName,
-            department: req.body.department,
-            degreeLevel: req.body.degreeLevel,
-            year: req.body.year,
-            supervisor: req.body.supervisor,
-            abstract: req.body.abstract,
-            researchGap: req.body.researchGap
-
-        });
-
-        res.redirect("/researches");
-
-    } catch (error) {
-
-        console.log(error);
-
-        res.send("Update Failed");
-
-    }
-
+    res.send("Update Failed");
+  }
 });
 
-// ==========================
+// ==========================================
 // DELETE RESEARCH
-// ==========================
+// Only Owner or Admin Can Delete
+// ==========================================
 
 app.get("/delete-research/:id", isLoggedIn, async (req, res) => {
 
     try {
+
+        const research = await Research.findById(req.params.id);
+
+        if (!research) {
+
+            return res.send("Research Not Found");
+
+        }
+
+        // Only Owner or Admin Can Delete
+        if (
+            research.userId.toString() !== req.session.userId &&
+            req.session.userRole !== "admin"
+        ) {
+
+            return res.send("Access Denied");
+
+        }
 
         await Research.findByIdAndDelete(req.params.id);
 
@@ -527,7 +569,7 @@ app.get("/delete-research/:id", isLoggedIn, async (req, res) => {
 
     }
 
-    catch(error){
+    catch (error) {
 
         console.log(error);
 
@@ -537,306 +579,14 @@ app.get("/delete-research/:id", isLoggedIn, async (req, res) => {
 
 });
 
-
-
-
 // ==========================================
-// SERVER
+// START SERVER
 // ==========================================
 
-app.listen(3000, () => {
+const PORT = process.env.PORT || 3000;
 
-    console.log("🚀 Server running on Port 3000");
-    console.log("🌐 http://localhost:3000");
-    
+app.listen(PORT, () => {
+  console.log(` Server Running on Port ${PORT}`);
 
+  console.log(` http://localhost:${PORT}`);
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// // IMPORTS
-// const express = require("express");
-// const mongoose = require("mongoose");
-// const User = require("./models/User");
-// const Research = require("./models/Research");
-// const multer = require("multer");
-// const bcrypt = require("bcrypt");
-// const session = require("express-session");
-
-// const app = express();
-
-
-// // SETTINGS
-
-// app.set("view engine", "ejs");
-
-// app.use(express.static("public"));
-// app.use(express.urlencoded({ extended: true }));
-
-// // SESSION CONFIGURATION
-
-// app.use(
-//   session({
-//     secret: "researchhubsecret",
-//     resave: false,
-//     saveUninitialized: false,
-//   }),
-// );
-
-// // FILE UPLOAD CONFIGURATION
-
-// const storage = multer.diskStorage({
-//   destination: function (req, file, cb) {
-//     cb(null, "public/uploads");
-//   },
-
-//   filename: function (req, file, cb) {
-//     cb(null, Date.now() + "-" + file.originalname);
-//   },
-// });
-
-// const upload = multer({ storage: storage });
-
-// // DATABASE CONNECTION
-
-// mongoose
-//   .connect("mongodb://127.0.0.1:27017/researchhub")
-
-//   .then(() => console.log("MongoDB Connected"))
-
-//   .catch((err) => console.log(err));
-
-// // LOGIN CHECK MIDDLEWARE
-
-// function isLoggedIn(req, res, next) {
-//   if (req.session.userId) {
-//     next();
-//   } else {
-//     res.redirect("/login");
-//   }
-// }
-
-// // HOME PAGE
-
-// app.get("/", (req, res) => {
-//   res.render("index");
-// });
-
-// // REGISTER PAGE
-
-// app.get("/register", (req, res) => {
-//   res.render("register");
-// });
-
-// // REGISTER USER
-
-// app.post("/register", async (req, res) => {
-//   try {
-//     const hashedPassword = await bcrypt.hash(req.body.password, 10);
-
-//     const user = new User({
-//       fullName: req.body.fullName,
-//       regNo: req.body.regNo,
-//       email: req.body.email,
-//       department: req.body.department,
-//       degreeLevel: req.body.degreeLevel,
-//       password: hashedPassword,
-//     });
-
-//     await user.save();
-
-//     res.send("Registration Successful");
-//   } catch (error) {
-//     console.log(error);
-
-//     res.send("Error while registering");
-//   }
-// });
-
-// // LOGIN PAGE
-
-// app.get("/login", (req, res) => {
-//   res.render("login");
-// });
-
-// // LOGIN USER
-
-// app.post("/login", async (req, res) => {
-//   try {
-//     const user = await User.findOne({
-//       email: req.body.email,
-//     });
-
-//     if (!user) {
-//       return res.send("Invalid Email or Password");
-//     }
-
-//     const isMatch = await bcrypt.compare(req.body.password, user.password);
-
-//     if (isMatch) {
-//       req.session.userId = user._id;
-//       req.session.userName = user.fullName;
-
-//       res.redirect("/dashboard");
-//     } else {
-//       res.send("Invalid Email or Password");
-//     }
-//   } catch (error) {
-//     console.log(error);
-
-//     res.send("Login Error");
-//   }
-// });
-
-// // DASHBOARD
-
-// app.get("/dashboard", isLoggedIn, (req, res) => {
-//   res.render("dashboard");
-// });
-
-// // LOGOUT
-
-// app.get("/logout", (req, res) => {
-//   req.session.destroy();
-
-//   res.redirect("/login");
-// });
-
-// // UPLOAD RESEARCH PAGE
-
-// app.get("/upload-research", isLoggedIn, (req, res) => {
-//   res.render("uploadResearch");
-// });
-
-
-// // =========================
-// // SAVE RESEARCH
-// // =========================
-
-// app.post(
-//   "/upload-research",
-//   isLoggedIn,
-//   upload.single("pdf"),
-//   async (req, res) => {
-
-//     try {
-
-//       const research = new Research({
-
-//         title: req.body.title,
-//         studentName: req.body.studentName,
-//         department: req.body.department,
-//         degreeLevel: req.body.degreeLevel,
-//         year: req.body.year,
-//         supervisor: req.body.supervisor,
-//         abstract: req.body.abstract,
-//         researchGap: req.body.researchGap,
-//         pdfFile: req.file.filename
-
-//       });
-
-//       await research.save();
-
-//       res.redirect("/researches");
-
-//     } catch (error) {
-
-//       console.log(error);
-
-//       res.send("Upload Failed");
-
-//     }
-
-// });
-
-// // ==========================
-// // REPOSITORY PAGE + SEARCH
-// // ==========================
-
-// app.get("/researches", async (req, res) => {
-
-//     const search = req.query.search || "";
-
-//     let researches;
-
-//     if (search) {
-
-//         researches = await Research.find({
-
-//             $or: [
-
-//                 { title: { $regex: search, $options: "i" } },
-
-//                 { studentName: { $regex: search, $options: "i" } },
-
-//                 { department: { $regex: search, $options: "i" } },
-
-//                 { supervisor: { $regex: search, $options: "i" } }
-
-//             ]
-
-//         });
-
-//     } else {
-
-//         researches = await Research.find();
-
-//     }
-
-//     res.render("researches", {
-
-//         researches,
-//         search
-
-//     });
-
-// });
-
-// // =========================
-// // LOGOUT
-// // =========================
-
-// app.get("/logout", (req, res) => {
-
-//     req.session.destroy((error) => {
-
-//         if (error) {
-
-//             return res.send("Logout Failed");
-
-//         }
-
-//         res.redirect("/");
-
-//     });
-
-// });
-
-
-// // =========================
-// // GLOBAL USER
-// // =========================
-
-// app.use((req, res, next) => {
-
-//     res.locals.user = req.session.userName;
-
-//     next();
-
-// });
-// // SERVER
-
-// app.listen(3000, () => {
-//   console.log("Server running on port 3000");
-// });
