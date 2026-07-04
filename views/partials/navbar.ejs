@@ -2,19 +2,20 @@
 <!-- NAVBAR -->
 <!-- ========================= -->
 
-<nav class="navbar navbar-expand-lg navbar-dark shadow">
+<nav class="navbar navbar-expand-lg navbar-dark shadow sticky-top" id="mainNavbar">
 
     <div class="container">
 
         <a class="navbar-brand fw-bold fs-4" href="/">
-            🔬 ResearchHub
+            <span class="brand-icon">🔬</span> ResearchHub
         </a>
 
         <button
             class="navbar-toggler"
             type="button"
             data-bs-toggle="collapse"
-            data-bs-target="#navbarNav">
+            data-bs-target="#navbarNav"
+            aria-label="Toggle navigation">
 
             <span class="navbar-toggler-icon"></span>
 
@@ -27,19 +28,19 @@
             <ul class="navbar-nav me-auto">
 
                 <li class="nav-item">
-                    <a class="nav-link" href="/">Home</a>
+                    <a class="nav-link <%= typeof activePage !== 'undefined' && activePage === 'home' ? 'active' : '' %>" href="/">Home</a>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" href="/researches">Repository</a>
+                    <a class="nav-link <%= typeof activePage !== 'undefined' && activePage === 'repository' ? 'active' : '' %>" href="/researches">Repository</a>
                 </li>
 
-                <% if(user){ %>
+                <% if(typeof user !== 'undefined' && user){ %>
 
                     <% if(user.role === "admin"){ %>
 
                         <li class="nav-item">
-                            <a class="nav-link" href="/admin">
+                            <a class="nav-link <%= typeof activePage !== 'undefined' && activePage === 'admin' ? 'active' : '' %>" href="/admin">
                                 Admin Panel
                             </a>
                         </li>
@@ -47,13 +48,13 @@
                     <% } else { %>
 
                         <li class="nav-item">
-                            <a class="nav-link" href="/dashboard">
+                            <a class="nav-link <%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>" href="/dashboard">
                                 Dashboard
                             </a>
                         </li>
 
                         <li class="nav-item">
-                            <a class="nav-link" href="/upload-research">
+                            <a class="nav-link <%= typeof activePage !== 'undefined' && activePage === 'upload' ? 'active' : '' %>" href="/upload-research">
                                 Upload Research
                             </a>
                         </li>
@@ -66,25 +67,25 @@
 
             <!-- Right Side -->
 
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
 
-                <% if(user){ %>
+                <% if(typeof user !== 'undefined' && user){ %>
 
-                    <span class="text-white fw-semibold">
+                    <span class="text-white fw-semibold nav-welcome d-none d-lg-inline">
                         👋 Welcome, <%= user.fullName %>
                     </span>
 
-                    <a href="/logout" class="btn btn-warning fw-bold">
+                    <a href="/logout" class="btn btn-warning fw-bold btn-nav">
                         Logout
                     </a>
 
                 <% } else { %>
 
-                    <a href="/login" class="btn btn-outline-light">
+                    <a href="/login" class="btn btn-outline-light btn-nav">
                         Login
                     </a>
 
-                    <a href="/register" class="btn btn-warning fw-bold">
+                    <a href="/register" class="btn btn-warning fw-bold btn-nav">
                         Register
                     </a>
 

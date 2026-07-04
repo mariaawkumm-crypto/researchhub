@@ -1,129 +1,130 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-
-<title>Admin Panel</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<link rel="stylesheet" href="/css/style.css">
-
+    <%- include("partials/head", { pageTitle: "Admin Panel | ResearchHub" }) %>
 </head>
 
 <body>
 
-<%- include("partials/navbar") %>
+    <%- include("partials/navbar", { activePage: "admin" }) %>
 
-<div class="container mt-5">
+    <section class="hero-dashboard hero-compact">
 
-<h1 class="mb-4">
+        <div class="container text-center">
 
-👨‍💼 Admin Dashboard
+            <h1 class="fw-bold">👨‍💼 Admin Dashboard</h1>
 
-</h1>
+            <p class="lead mb-0">
+                Oversee students and manage the university research repository
+            </p>
 
-<div class="row mb-5">
+        </div>
 
-<div class="col-md-6">
+    </section>
 
-<div class="card dashboard-card text-center p-4">
+    <div class="container my-5">
 
-<h2>
+        <div class="row mb-5 g-4">
 
-<%= users.length %>
+            <div class="col-md-6">
 
-</h2>
+                <div class="card dashboard-card text-center p-4 reveal reveal-delay-1 in-view">
 
-<p>Total Students</p>
+                    <h2><%= users.length %></h2>
 
-</div>
+                    <p class="mb-0">Total Students</p>
 
-</div>
+                </div>
 
-<div class="col-md-6">
+            </div>
 
-<div class="card dashboard-card text-center p-4">
+            <div class="col-md-6">
 
-<h2>
+                <div class="card dashboard-card text-center p-4 reveal reveal-delay-2 in-view">
 
-<%= researches.length %>
+                    <h2><%= researches.length %></h2>
 
-</h2>
+                    <p class="mb-0">Total Research</p>
 
-<p>Total Research</p>
+                </div>
 
-</div>
+            </div>
 
-</div>
+        </div>
 
-</div>
+        <h3 class="mb-4 section-title">📚 All Uploaded Research</h3>
 
-<h3 class="mb-3">
+        <div class="table-wrap reveal in-view">
 
-📚 All Uploaded Research
+            <table class="table table-hover mb-0">
 
-</h3>
+                <thead>
 
-<table class="table table-bordered table-hover">
+                    <tr>
+                        <th>Title</th>
+                        <th>Student</th>
+                        <th>Department</th>
+                        <th>Year</th>
+                        <th>Action</th>
+                    </tr>
 
-<thead>
+                </thead>
 
-<tr>
+                <tbody>
 
-<th>Title</th>
+                    <% if (researches.length === 0) { %>
 
-<th>Student</th>
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                No research uploaded yet.
+                            </td>
+                        </tr>
 
-<th>Department</th>
+                    <% } %>
 
-<th>Year</th>
+                    <% researches.forEach(research => { %>
 
-<th>Action</th>
+                        <tr>
 
-</tr>
+                            <td><%= research.title %></td>
 
-</thead>
+                            <td><%= research.studentName %></td>
 
-<tbody>
+                            <td><%= research.department %></td>
 
-<% researches.forEach(research=>{ %>
+                            <td><%= research.year %></td>
 
-<tr>
+                            <td>
 
-<td><%= research.title %></td>
+                                <a href="/uploads/<%= research.pdfFile %>"
+                                    target="_blank"
+                                    class="btn btn-success btn-sm me-1">
+                                    View
+                                </a>
 
-<td><%= research.studentName %></td>
+                                <a href="/delete-research/<%= research._id %>"
+                                    class="btn btn-danger btn-sm"
+                                    onclick="return confirm('Delete this research?')">
+                                    Delete
+                                </a>
 
-<td><%= research.department %></td>
+                            </td>
 
-<td><%= research.year %></td>
+                        </tr>
 
-<td>
+                    <% }) %>
 
-<a href="/delete-research/<%= research._id %>"
+                </tbody>
 
-class="btn btn-danger btn-sm"
+            </table>
 
-onclick="return confirm('Delete this research?')">
+        </div>
 
-Delete
+    </div>
 
-</a>
+    <%- include("partials/footer") %>
 
-</td>
-
-</tr>
-
-<% }) %>
-
-</tbody>
-
-</table>
-
-</div>
-
-<%- include("partials/footer") %>
+    <%- include("partials/scripts") %>
 
 </body>
 
